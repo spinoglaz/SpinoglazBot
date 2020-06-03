@@ -16,3 +16,15 @@ dependencies {
     compile group: 'org.telegram', name: 'telegrambots', version: '4.8.1'
     compile group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.11.0'
 }
+
+jar {
+    manifest {
+        attributes(
+                'Main-Class': 'ru.dasha.spinoglazbot.Main'
+        )
+    }
+
+    from {
+        configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
