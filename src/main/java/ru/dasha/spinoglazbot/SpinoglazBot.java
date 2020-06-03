@@ -12,6 +12,7 @@ import java.io.IOException;
 public class SpinoglazBot extends TelegramLongPollingBot {
     private ForecastHandler forecastHandler = new ForecastHandler();
     private UVHandler uvHandler = new UVHandler();
+    private ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public void onUpdateReceived(Update update) {
@@ -27,26 +28,35 @@ public class SpinoglazBot extends TelegramLongPollingBot {
         }
         String city = update.getMessage().getText();
         int temperature = 0;
+        float lat = 0;
+        float lon = 0;
+        int UVIndex = 0;
         try {
             String data = forecastHandler.downloadJson(city);
-            ForecastList forecastList = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false).readValue(data, ForecastList.class);
-            temperature = (int) forecastList.list.get(0).main.temp - 273;
+            ForecastResponse forecastResponse = objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false).readValue(data, ForecastResponse.class);
+            System.out.println(data);
+            temperature = (int) forecastResponse.list.get(1).main.temp - 273;
+            lat = forecastResponse.city.coord.lat;
+            lon = forecastResponse.city.coord.lon;
         } catch (IOException e) {
             e.printStackTrace();
         }
-        sendMessage.setText(temperature + "\u00B0C");
         try{
-            execute(sendMessage);
+            execute(sendMessage.setText(temperature + "\u00B0C"));
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
-
-        double lat = 56.4977100;
-        double lan = 84.9743700;
         try {
-            String data = uvHandler.downloadJson(lat, lan);
-            UVValue uvValue = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false).readValue(data, UVValue.class);
-        } catch (IOException e) {
+            String UVdata = uvHandler.downloadJson(lat, lon);
+            UVValue uvValue = objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false).readValue(UVdata, UVValue.class);
+            UVIndex = (int) uvValue.value;
+        } catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+        try{
+            execute(sendMessage.setText("UV Index:" + " " + UVIndex));
+        } catch (TelegramApiException e) {
             e.printStackTrace();
         }
     }

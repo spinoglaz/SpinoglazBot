@@ -10,7 +10,7 @@ public class UVHandler {
     private final String API_CALL = "http://api.openweathermap.org/data/2.5/uvi?appid=";
     private final String KEY = "a1f6cbc7e1aca5bf22c000ada99af7c6";
 
-    public String downloadJson(double lat, double lon) throws IOException {
+    public String downloadJson(float lat, float lon) throws IOException {
         String urlString = API_CALL + KEY + "&lat=" + lat + "&lon=" + lon;
         URL url = new URL(urlString);
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
