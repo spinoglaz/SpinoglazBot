@@ -10,13 +10,13 @@ public class ForecastHandler {
     private final String API_CALL = "https://api.openweathermap.org/data/2.5/forecast?q=";
     private final String KEY = "&appid=a1f6cbc7e1aca5bf22c000ada99af7c6";
 
-    public String downloadJson(String city) throws IOException {
+    public String downloadJson(String city) throws IOException, LocationNotFoundException{
         String urlString = API_CALL + city + KEY;
         URL url = new URL(urlString);
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         int responseCode = connection.getResponseCode();
         if(responseCode == 404) {
-            throw new IllegalArgumentException();
+            throw new LocationNotFoundException();
         }
         BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
         String line;

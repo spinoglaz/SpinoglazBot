@@ -13,18 +13,14 @@ public class SpinoglazBot extends TelegramLongPollingBot {
     private ForecastHandler forecastHandler = new ForecastHandler();
     private UVHandler uvHandler = new UVHandler();
     private ObjectMapper objectMapper = new ObjectMapper();
+    private SendMessage sendMessage = new SendMessage();
 
     @Override
     public void onUpdateReceived(Update update) {
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(update.getMessage().getChatId());
+        Long chatId = update.getMessage().getChatId();
         if(update.getMessage().getText().equals("/start")) {
-            sendMessage.setText("Hello! Please enter the city name.");
-            try{
-                execute(sendMessage);
-            } catch (TelegramApiException e) {
-                e.printStackTrace();
-            }
+            sendMessage("Hello! Please enter the city name.", chatId);
+            return;
         }
         String city = update.getMessage().getText();
         int temperature = 0;
@@ -40,25 +36,20 @@ public class SpinoglazBot extends TelegramLongPollingBot {
             lon = forecastResponse.city.coord.lon;
         } catch (IOException e) {
             e.printStackTrace();
-        }
-        try{
-            execute(sendMessage.setText(temperature + "\u00B0C"));
-        } catch (TelegramApiException e) {
+            sendMessage("Failed to execute query", chatId);
+        } catch (LocationNotFoundException e) {
             e.printStackTrace();
+            sendMessage("Location not found.", chatId);
         }
+        sendMessage(temperature + "\u00B0C", chatId);
         try {
             String UVdata = uvHandler.downloadJson(lat, lon);
             UVValue uvValue = objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false).readValue(UVdata, UVValue.class);
             UVIndex = (int) uvValue.value;
-        } catch (IOException e)
-        {
+        } catch (IOException e) {
             e.printStackTrace();
         }
-        try{
-            execute(sendMessage.setText("UV Index:" + " " + UVIndex));
-        } catch (TelegramApiException e) {
-            e.printStackTrace();
-        }
+        sendMessage("UV Index:" + " " + UVIndex, chatId);
     }
 
     @Override
@@ -69,6 +60,16 @@ public class SpinoglazBot extends TelegramLongPollingBot {
     @Override
     public String getBotToken() {
         return "1258557799:AAGzaXmXv0P4tPbk2B1EXKmyHsh5PamwNms";
+    }
+
+    private void sendMessage(String message, Long chatId){
+        sendMessage.setText(message);
+        sendMessage.setChatId(chatId);
+        try {
+            execute(sendMessage);
+        } catch (TelegramApiException telegramApiException) {
+            telegramApiException.printStackTrace();
+        }
     }
 
 }
