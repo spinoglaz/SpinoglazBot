@@ -5,15 +5,23 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class SpinoglazBot extends TelegramLongPollingBot {
+    private final static String BOT_USERNAME = "SpinoglazBot";
+    private final static String BOT_TOKEN = "1258557799:AAGzaXmXv0P4tPbk2B1EXKmyHsh5PamwNms";
     private ForecastHandler forecastHandler = new ForecastHandler();
     private UVHandler uvHandler = new UVHandler();
     private ObjectMapper objectMapper = new ObjectMapper();
     private SendMessage sendMessage = new SendMessage();
+    private InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
+    private InlineKeyboardButton tomsk = new InlineKeyboardButton();
 
     @Override
     public void onUpdateReceived(Update update) {
@@ -22,7 +30,9 @@ public class SpinoglazBot extends TelegramLongPollingBot {
             sendMessage("Hello! Please enter the city name.", chatId);
             return;
         }
+
         String city = update.getMessage().getText();
+        System.out.println(update.getMessage().getText());
         int temperature = 0;
         float lat = 0;
         float lon = 0;
@@ -40,6 +50,7 @@ public class SpinoglazBot extends TelegramLongPollingBot {
         } catch (LocationNotFoundException e) {
             e.printStackTrace();
             sendMessage("Location not found.", chatId);
+            return;
         }
         sendMessage(temperature + "\u00B0C", chatId);
         try {
@@ -50,26 +61,38 @@ public class SpinoglazBot extends TelegramLongPollingBot {
             e.printStackTrace();
         }
         sendMessage("UV Index:" + " " + UVIndex, chatId);
+
     }
 
     @Override
     public String getBotUsername() {
-        return "SpinoglazBot";
+        return BOT_USERNAME;
     }
 
     @Override
     public String getBotToken() {
-        return "1258557799:AAGzaXmXv0P4tPbk2B1EXKmyHsh5PamwNms";
+        return BOT_TOKEN;
     }
 
     private void sendMessage(String message, Long chatId){
         sendMessage.setText(message);
         sendMessage.setChatId(chatId);
+        sendMessage.setReplyMarkup(sendInlineKeyBoard());
         try {
             execute(sendMessage);
-        } catch (TelegramApiException telegramApiException) {
-            telegramApiException.printStackTrace();
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
         }
     }
 
+    private InlineKeyboardMarkup sendInlineKeyBoard() {
+        tomsk.setText("Tomsk");
+        tomsk.setCallbackData("Tomsk");
+        List<InlineKeyboardButton> keyboardButtonsRow1 = new ArrayList<>();
+        keyboardButtonsRow1.add(tomsk);
+        List<List<InlineKeyboardButton>> rowList = new ArrayList<>();
+        rowList.add(keyboardButtonsRow1);
+        inlineKeyboardMarkup.setKeyboard(rowList);
+        return inlineKeyboardMarkup;
+    }
 }
