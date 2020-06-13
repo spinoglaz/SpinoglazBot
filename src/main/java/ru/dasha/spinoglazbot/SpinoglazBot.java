@@ -1,13 +1,13 @@
 package ru.dasha.spinoglazbot;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import ru.dasha.openweather.LocationNotFoundException;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -15,53 +15,46 @@ import java.util.List;
 
 public class SpinoglazBot extends TelegramLongPollingBot {
     private final static String BOT_USERNAME = "SpinoglazBot";
-    private final static String BOT_TOKEN = "1258557799:AAGzaXmXv0P4tPbk2B1EXKmyHsh5PamwNms";
-    private ForecastHandler forecastHandler = new ForecastHandler();
-    private UVHandler uvHandler = new UVHandler();
-    private ObjectMapper objectMapper = new ObjectMapper();
     private SendMessage sendMessage = new SendMessage();
     private InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
-    private InlineKeyboardButton tomsk = new InlineKeyboardButton();
+    private AnswerCallbackQuery answerCallbackQuery = new AnswerCallbackQuery();
+    private ForecastService forecastService = new ForecastService();
 
     @Override
     public void onUpdateReceived(Update update) {
-        Long chatId = update.getMessage().getChatId();
-        if(update.getMessage().getText().equals("/start")) {
-            sendMessage("Hello! Please enter the city name.", chatId);
-            return;
-        }
+        if(update.hasMessage()) {
+            Long chatId = update.getMessage().getChatId();
+            if(update.getMessage().getText().equals("/start")) {
+                sendMessage("Hello! Please enter the city name or select from the list.", chatId, createInlineKeyBoard());
+                return;
+            }
+            String city = update.getMessage().getText();
+            System.out.println(update.getMessage().getText());
+            try {
+                Forecast forecast = forecastService.getForecast(city);
+                sendMessage(forecast.temperature + "\u00B0C" + " " + "UV Index:" + forecast.UVIndex, chatId, null);
+            } catch (IOException e) {
+                e.printStackTrace();
+                sendMessage("Failed to execute query", chatId, null);
+            } catch (LocationNotFoundException e) {
+                e.printStackTrace();
+                sendMessage("Location not found.", chatId, null);
+                return;
+            }
 
-        String city = update.getMessage().getText();
-        System.out.println(update.getMessage().getText());
-        int temperature = 0;
-        float lat = 0;
-        float lon = 0;
-        int UVIndex = 0;
-        try {
-            String data = forecastHandler.downloadJson(city);
-            ForecastResponse forecastResponse = objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false).readValue(data, ForecastResponse.class);
-            System.out.println(data);
-            temperature = (int) forecastResponse.list.get(1).main.temp - 273;
-            lat = forecastResponse.city.coord.lat;
-            lon = forecastResponse.city.coord.lon;
-        } catch (IOException e) {
-            e.printStackTrace();
-            sendMessage("Failed to execute query", chatId);
-        } catch (LocationNotFoundException e) {
-            e.printStackTrace();
-            sendMessage("Location not found.", chatId);
-            return;
+        } else if(update.hasCallbackQuery()) {
+            String queryId = update.getCallbackQuery().getId();
+            String city = update.getCallbackQuery().getData();
+            try {
+                Forecast forecast = forecastService.getForecast(city);
+                answerCallbackQuery( forecast.temperature+ "\u00B0C" + " " + "UV Index:" + forecast.UVIndex, queryId);
+            } catch (IOException e) {
+                e.printStackTrace();
+                answerCallbackQuery("Failed to execute query", queryId);
+            } catch (LocationNotFoundException e) {
+                e.printStackTrace();
+            }
         }
-        sendMessage(temperature + "\u00B0C", chatId);
-        try {
-            String UVdata = uvHandler.downloadJson(lat, lon);
-            UVValue uvValue = objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false).readValue(UVdata, UVValue.class);
-            UVIndex = (int) uvValue.value;
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        sendMessage("UV Index:" + " " + UVIndex, chatId);
-
     }
 
     @Override
@@ -71,13 +64,13 @@ public class SpinoglazBot extends TelegramLongPollingBot {
 
     @Override
     public String getBotToken() {
-        return BOT_TOKEN;
+        return System.getenv("BOT_TOKEN");
     }
 
-    private void sendMessage(String message, Long chatId){
+    private void sendMessage(String message, Long chatId, InlineKeyboardMarkup inlineKeyboardMarkup){
         sendMessage.setText(message);
         sendMessage.setChatId(chatId);
-        sendMessage.setReplyMarkup(sendInlineKeyBoard());
+        sendMessage.setReplyMarkup(inlineKeyboardMarkup);
         try {
             execute(sendMessage);
         } catch (TelegramApiException e) {
@@ -85,14 +78,30 @@ public class SpinoglazBot extends TelegramLongPollingBot {
         }
     }
 
-    private InlineKeyboardMarkup sendInlineKeyBoard() {
+    private InlineKeyboardMarkup createInlineKeyBoard() {
+        InlineKeyboardButton tomsk = new InlineKeyboardButton();
+        InlineKeyboardButton novosibirsk = new InlineKeyboardButton();
         tomsk.setText("Tomsk");
         tomsk.setCallbackData("Tomsk");
+        novosibirsk.setText("Novosibirsk");
+        novosibirsk.setCallbackData("Novosibirsk");
         List<InlineKeyboardButton> keyboardButtonsRow1 = new ArrayList<>();
         keyboardButtonsRow1.add(tomsk);
+        keyboardButtonsRow1.add(novosibirsk);
         List<List<InlineKeyboardButton>> rowList = new ArrayList<>();
         rowList.add(keyboardButtonsRow1);
         inlineKeyboardMarkup.setKeyboard(rowList);
         return inlineKeyboardMarkup;
+    }
+
+    private void answerCallbackQuery(String message, String id) {
+        answerCallbackQuery.setCallbackQueryId(id);
+        answerCallbackQuery.setText(message);
+        answerCallbackQuery.setShowAlert(true);
+        try {
+            execute(answerCallbackQuery);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
     }
 }

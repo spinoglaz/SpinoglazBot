@@ -1,4 +1,4 @@
-package ru.dasha.spinoglazbot;
+package ru.dasha.openweather;
 
 public class ForecastMain {
     public float temp;

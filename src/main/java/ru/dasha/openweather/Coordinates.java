@@ -1,4 +1,4 @@
-package ru.dasha.spinoglazbot;
+package ru.dasha.openweather;
 
 public class Coordinates {
     public float lat;

@@ -1,8 +1,8 @@
-package ru.dasha.spinoglazbot;
+package ru.dasha.openweather;
 
 import java.util.List;
 
 public class ForecastResponse {
-    public List<Forecast> list;
+    public List<DailyForecast> list;
     public City city;
 }
